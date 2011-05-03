@@ -1,19 +1,17 @@
 package SQL::Interp;
 
-our $VERSION = '1.10';
+our $VERSION = '1.11';
 
 use strict;
 use warnings;
 use Carp;
-use base 'Exporter';
+use Sub::Exporter -setup => {
+    exports => [ qw{  sql_interp
+                      sql_interp_strict
+                      sql_type
+                      sql } ],
+};
 
-our @EXPORT;
-our %EXPORT_TAGS = (all => [qw(
-    sql_interp
-    sql_type
-    sql
-)]); 
-our @EXPORT_OK = @{ $EXPORT_TAGS{all} };
 
 # whether TRACE_SQL is enabled
 my $trace_sql_enabled = $ENV{TRACE_SQL} || 0;
@@ -47,33 +45,6 @@ my $state = undef;
 # bind elements in interpolation
 # [local to sql_interp functions]
 my @bind;
-
-sub import {
-    my $class  = shift;
-    my @params = @_;
-
-    # process any special "use" parameters
-    my $is_wrapped     = 0;  # whether module wrapped
-                             #   (e.g. by DBIx::Interp)
-    my %action_for = (
-        TRACE_SQL    => sub { $trace_sql_enabled = shift @params;
-                              print STDERR "TRACE_SQL enabled\n"
-                                  if $trace_sql_enabled; },
-        __WRAP       => sub { $is_wrapped = shift @params; }
-    );
-    @_ = ($class);  # unprocessed params
-    while (my $item = shift @params) {
-        my $action = $action_for{$item};
-        if ($action) { $action->(); }
-        else         { push @_, $item; }
-    }
-
-    # handle exports
-    my $level = $is_wrapped ? 2 : 1;
-    __PACKAGE__->export_to_level($level, @_);
-
-    return;
-}
 
 # only used by DBIx::Interp, so not further documented here
 sub new {
@@ -138,8 +109,32 @@ sub sql_interp {
     return ($sql, @bind);
 }
 
+# Prevent accidental SQL injection holes
+# By enforcing the rule that two non-references cannot be used
+# in a row. If you really mean that, concatanate the strings instead.
+sub sql_interp_strict {
+    my @items = @_;
+
+    my $adjacent_string_cnt = 0;
+    for my $item (@items) {
+        # If we have a reference, reset the counter and move to the next element.
+        if (ref $item) {
+            $adjacent_string_cnt = 0;
+        }
+        else {
+            $adjacent_string_cnt++;
+            if ($adjacent_string_cnt == 2) {
+                croak "failed sql_interp_strict check. Refactor to concatenate adjacent strings in sql_interp array";
+            }
+        }
+
+    }
+
+    return sql_interp(@_);
+}
+
 # helper called by sql_interp()
-# @items - interpolation list 
+# @items - interpolation list
 sub _sql_interp {
     my (@items) = @_;
 
@@ -173,7 +168,7 @@ sub _sql_interp {
 
                 if (ref $item eq 'ARRAY') {
                     if (@$item == 0) {
-                        my $dummy_expr = $not ? '1=1' : '1=0'; 
+                        my $dummy_expr = $not ? '1=1' : '1=0';
                         $sql =~ s/$id_match\s+${not}IN\s*$/$dummy_expr/si or croak 'ASSERT';
                     }
                     else {
@@ -391,14 +386,6 @@ sub _error {
     croak "SQL::Interp error: $_[0]";
 }
 
-# This shall only be called by DBIx::Interp.
-sub _use_params {
-    scalar(caller()) eq 'DBIx::Interp' or die 'ASSERT';
-
-    # supported use parameters.
-    return qw(TRACE_SQL);
-}
-
 1;
 
 package SQL::Interp::Variable;
@@ -462,42 +449,44 @@ SQL::Interp - Interpolate Perl variables into SQL statements
   my ($sql, @bind) = sql_interp 'INSERT INTO table', \%item;
   my ($sql, @bind) = sql_interp 'UPDATE table SET',  \%item, 'WHERE y <> ', \2;
   my ($sql, @bind) = sql_interp 'DELETE FROM table WHERE y = ', \2;
-  
+
   # These two select syntax produce the same result
   my ($sql, @bind) = sql_interp 'SELECT * FROM table WHERE x = ', \$s, 'AND y IN', \@v;
   my ($sql, @bind) = sql_interp 'SELECT * FROM table WHERE', {x => $s, y => \@v};
-  
+
 
 =head1 DESCRIPTION
 
 SQL::Interp converts a list of intermixed SQL fragments and variable references
 into a conventional SQL string and I<list of bind values> suitable for passing
 onto DBI. This simple technique creates database calls that are simpler to create and
-easier to read, while still giving you full access to custom SQL. 
+easier to read, while still giving you full access to custom SQL.
 
 SQL::Interp properly binds or escapes variables.  This recommended practice
 safeguards against "SQL injection" attacks. The L<DBI|DBI> documentation has
 several links on the topic.
 
-Besides the simple techniques shown above, The SQL-Interpolate distribution includes
-the optional L<DBIx::Interp|DBIx::Interp> module, which integrates with DBI:
-  
-  use DBIx::Interp ':all';
+Besides the simple techniques shown above, The SQL::Interp integrates directly
+with L<DBIx::Simple|DBIx::Simple> for an excellent alternative to raw DBI access:
+
+  use DBIx::Simple;
+
   ...
-  my $rows = $dbx->selectall_arrayref("
+
+  my $rows = $db->iquery("
       SELECT title
           FROM threads
           WHERE date > ",\$x," AND subject IN ",\@subjects
-   );
+   )->arrays;
 
-Since DBIx::Interp still allows you complete access to the DBI API, using it  
-as wrapper is recommended for most applications.
+Since DBIx::Simple still allows you complete access to the DBI API, using it as
+wrapper is recommended for most applications.
 
 =head1 The One Function You Really Need
 
 =head2 C<sql_interp>
 
-  ($sql, @bind) = sql_interp @params;    
+  ($sql, @bind) = sql_interp @params;
 
 C<sql_interp()> is the one central function you need to know. C<sql_interp()>
 strings together the given list of elements  and returns both an SQL string ($sql) with
@@ -522,13 +511,13 @@ B<Interpolation Examples>
 The following variable names will be used in the below examples:
 
  $sref  = \3;                      # scalarref
- $aref  = [1, 2];                  # arrayref 
+ $aref  = [1, 2];                  # arrayref
  $href  = {m => 1, n => undef};    # hashref
  $hv = {v => $v, s => $$s};        # hashref containing arrayref
  $vv = [$v, $v];                   # arrayref of arrayref
  $vh = [$h, $h];                   # arrayref of hashref
 
- Let $x stand for any of these. 
+ Let $x stand for any of these.
 
 =head3 Default scalarref behavior
 
@@ -542,24 +531,24 @@ A scalarref becomes a single bind value.
 A hashref becomes a logical AND
 
   IN:  'WHERE', $href
-  OUT: 'WHERE (m=? AND n IS NULL)', $h->{m},  
+  OUT: 'WHERE (m=? AND n IS NULL)', $h->{m},
 
   IN:  'WHERE', $hv
-  OUT: 'WHERE (v IN (?, ?) AND s = ?)', @$v, $$s 
+  OUT: 'WHERE (v IN (?, ?) AND s = ?)', @$v, $$s
 
 =head3 Default arrayref of (hashref or arrayref) behavior
 
-I<This is not commonly used.> 
+I<This is not commonly used.>
 
   IN:  $vv
   OUT: '(SELECT ?, ? UNION ALL SELECT ?, ?)',
-          map {@$_} @$v                           
+          map {@$_} @$v
 
   IN:  $vh
   OUT: '(SELECT ? as m, ? as n UNION ALL
             SELECT ?, ?)',
           $vh->[0]->{m}, $vh->[0]->{n},
-          $vh->[1]->{m}, $vh->[1]->{n}            
+          $vh->[1]->{m}, $vh->[1]->{n}
 
   # Typical usage:
   IN: $x
@@ -581,10 +570,10 @@ arrayref.
   OUT: 'WHERE x IN (?)', $$sref
 
   IN:  'WHERE x IN', []
-  OUT: 'WHERE 1=0'                              
+  OUT: 'WHERE 1=0'
 
   IN:  'WHERE x NOT IN', []
-  OUT: 'WHERE 1=1'                              
+  OUT: 'WHERE 1=1'
 
 =head3 Context ('INSERT INTO tablename', $x)
 
@@ -592,10 +581,10 @@ arrayref.
   OUT: 'INSERT INTO mytable (m, n) VALUES(?, ?)', $href->{m}, $href->{n}
 
   IN:  'INSERT INTO mytable', $aref
-  OUT: 'INSERT INTO mytable VALUES(?, ?)', @$aref; 
+  OUT: 'INSERT INTO mytable VALUES(?, ?)', @$aref;
 
   IN:  'INSERT INTO mytable', $sref
-  OUT: 'INSERT INTO mytable VALUES(?)', $$sref; 
+  OUT: 'INSERT INTO mytable VALUES(?)', $$sref;
 
 MySQL's "REPLACE INTO" is supported the same way.
 
@@ -608,18 +597,18 @@ MySQL's "ON DUPLICATE KEY UPDATE" is supported the same way.
 
 =head3 Context ('FROM | JOIN', $x)
 
-I<This is not commonly used.> 
+I<This is not commonly used.>
 
   IN:  'SELECT * FROM', $vv
   OUT: 'SELECT * FROM
        (SELECT ?, ? UNION ALL SELECT ?, ?) as t001',
-       map {@$_} @$v      
+       map {@$_} @$v
 
   IN:  'SELECT * FROM', $vh
   OUT: 'SELECT * FROM
        (SELECT ? as m, ? as n UNION ALL SELECT ?, ?) as temp001',
        $vh->[0]->{m}, $vh->[0]->{n},
-       $vh->[1]->{m}, $vh->[1]->{n}  
+       $vh->[1]->{m}, $vh->[1]->{n}
 
   IN:  'SELECT * FROM', $vv, 'AS t'
   OUT: 'SELECT * FROM
@@ -628,23 +617,6 @@ I<This is not commonly used.>
 
   # Example usage (where $x and $y are table references):
   'SELECT * FROM', $x, 'JOIN', $y
-
-=head3 Preparing and reusing a statement handle
-
-The following code reuses a statement handle and even reprepares the statement
-handle if the SQL changes.  L<DBIx::Interp> provides a streamlined solution
-that transparently caches statement handles.
-
-  my $sth;
-  for my $href (@array_of_hashrefs) {
-     my @list = ('SELECT * FROM mytable WHERE', $href);
-     my ($sql, @bind) = sql_interp @list;
-     if (! defined $sth || $sth->{Statement} ne $sql) {
-         $sth = $dbh->prepare($sql);
-     }
-     $sth->execute(@bind);
-     $sth->fetchall_arrayref();
-  }
 
 =head3 Other Rules
 
@@ -661,6 +633,34 @@ of binding values.
 In contrast, any scalar values I<inside> an arrayref or hashref are by
 default treated as binding variables, not SQL.  The contained
 elements may be also be L<sql_type()> or L<sql()>.
+
+=head1 Security: sql_interp_strict
+
+The C<< sql_interp >> function has a security weakness. Consider these two
+statements, one easily a typo of the other:
+
+    sql_interp("SELECT * FROM foo WHERE a = ",\$b)
+    sql_interp("SELECT * FROM foo WHERE a = ",$b)
+
+Both would produce valid SQL, but the first would be secure due to use of bind
+variables, while the second is potentially insecure, because C<< $b >> is added
+directly to the SQL statement. If C<< $b >> contains a malicious value, it
+could be used for a SQL injection attack.
+
+To prevent this accident, we also supply C<< sql_interp_strict() >>, which
+works exactly the same as sql_interp(), but with an additional check that B<
+two non-references never appear in a row >. If they do, an exception will be
+thrown.
+
+This does mean some previously safe-but-valid SQL be need to be rewritten, such
+as when you are building a complex query from pieces. Here's a contrived example:
+
+    sql_interp("SELECT * FROM ","foo","WHERE a = ",\$b);
+
+To work under strict mode, you need to concatenate the strings instead:
+
+    sql_interp("SELECT * FROM "."foo"."WHERE a = ",\$b);
+
 
 =head1 A Couple Helper Functions You Sometimes Need
 
@@ -712,7 +712,7 @@ all the variable references are transparently converted into sql_type
 objects, and the elements of @bind take a special form: an arrayref
 consisting of the bind value and the sql_type object that generated the
 bind value.  Note that a single sql_type holding an aggregate (arrayref
-or hashref) may generate multiple bind values.  
+or hashref) may generate multiple bind values.
 
 =head1 Enabling debugging output
 
@@ -721,15 +721,11 @@ you can set the environment variable C<TRACE_SQL> to "1"
 
  TRACE_SQL=1 perl my_script.pl
 
-Alternatively, you can do this:
-
- use SQL::Interp TRACE_SQL => 1;
-
 Here's some example output:
 
  DEBUG:interp[sql=INSERT INTO mytable VALUES(?),bind=5]
 
-=head1 Philosophy 
+=head1 Philosophy
 
 B<The query language is SQL>.  There are other modules, such as
 L<SQL::Abstract|SQL::Abstract>, that hide SQL behind method calls and/or Perl
@@ -749,19 +745,19 @@ In contrast, SQL::Interp does not abstract away your SQL but rather makes it
 easier to interpolate Perl variables into your SQL.  Now, SQL::Interp I<does>
 load some meaning into "{, "[" and "\", but we try to limit its use to obvious
 cases.  Since your raw SQL is exposed, you can use your particular dialect of
-SQL.  
+SQL.
 
-=head1 Limitations 
+=head1 Limitations
 
 Some types of interpolation are context-sensitive and involve examination of
 your SQL fragments.  The examination could fail on obscure syntax, but it is
 generally robust.  Look at the examples to see the types of interpolation that
 are accepted, and if doubt, examine the SQL output yourself with the TRACE_SQL
-option.  If needed, you can disable context sensitivity by inserting a
+environment variable set.  If needed, you can disable context sensitivity by inserting a
 null-string before a variable.
- 
+
  "SET", "", \$x
- 
+
 A few things are just not possible with the ('WHERE', \%hashref)
 syntax, so in such case, use a more direct syntax:
 
@@ -775,13 +771,27 @@ In the cases where this module parses or generates SQL fragments, this module
 should work for many databases, but its been tested mostly on MySQL and
 PostgreSQL.  Please inform the author of any incompatibilities.
 
-=head1 Contributors
+=head1 Contributor and Contributing
 
 David Manura (L<http://math2.org/david/contact>) (author).
 Mark Stosberg (L<http://mark.stosberg.com/>) created and maintains
 the SQL::Interp fork. Also thanks to: Mark Tiefenbruck (syntax), Wojciech Pietron (Oracle
 compat), Jim Chromie (DBIx::Interp idea), Juerd Waalboer,
 Terrence Brannon (early feedback), and others.
+
+If you like SQL::Interp, please consider supporting the project by adding
+support for the 'quote_char' and 'name_sep' options. SQL::Abstract has code
+that can be borrowed for this. See this bug report for details:
+http://rt.cpan.org/Public/Bug/Display.html?id=31488
+
+If you use SQL::Interp with PostgreSQL and are interested in a further
+performance improvement, considering working on this optimization: "RT#39778:
+wish: optimize IN() to be ANY() for compatible PostgreSQL versions":
+https://rt.cpan.org/Ticket/Display.html?id=39778
+
+SQL::Interp now has a code repository hosted on Github:
+
+ L<https://github.com/markstos/SQL-Interp>
 
 =head1 Bug Reporting
 
@@ -829,7 +839,8 @@ used it for years without those optional features and never missed them.
 
 L<DBIx::Interp|DBIx::Interp> allows DBI methods to accept an
 C<sql_interp()>-like interpolation list rather than the traditional
-($statement, \%attr, @bind_values) parameter list.
+($statement, \%attr, @bind_values) parameter list. However, consider
+using L<DBIx::Simple|DBIx::Simple> instead-- it even more user friendly.
 
 =head2 Related modules
 

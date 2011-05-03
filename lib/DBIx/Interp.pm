@@ -4,51 +4,21 @@ use strict;
 use warnings;
 use Carp;
 use SQL::Interp ':all';
-use base qw(Exporter DBI);
+use base 'DBI';
+use Sub::Exporter -setup => {
+    exports => [
+        qw{attr dbi_interp key_field},
+        qw{  sql_interp
+             sql_interp_strict
+             sql_type
+             sql },
+    ],
+};
 
-our $VERSION = '1.10';
-
-our @EXPORT;
-our %EXPORT_TAGS = (all => [qw(
-    attr
-    dbi_interp
-    key_field
-)]);
-our @EXPORT_OK = @{$EXPORT_TAGS{all}};
+our $VERSION = '1.11';
 
 our @CARP_NOT =
     qw(DBIx::Interp DBIx::Interp::db DBIx::Interp::STX);
-
-sub _wrap(&);
-
-sub import {
-    my @params = @_;
-
-    # handle local exports
-    my @params2 = _wrap_params($SQL::Interp::EXPORT_TAGS{all},
-                                [SQL::Interp::_use_params()], @params);
-    __PACKAGE__->export_to_level(1, @params2);
-
-    # pass use parameters to wrapped module.
-    @_ = _wrap_params($EXPORT_TAGS{all}, [], @params);
-    push @_, __WRAP => 1;
-    goto &SQL::Interp::import; # @_
-}
-
-# internal helper function to mangle "use" parameters for a wrapper
-# called only by import().
-sub _wrap_params {
-    my ($skip_names, $skip_keys, @parts) = @_;
-    my @out;
-    my %skip_names = map {($_=>1)} @$skip_names;
-    my %skip_keys  = map {($_=>1)} @$skip_keys;
-    while (@parts) {
-        if    ($skip_names{$parts[0]}) { shift @parts; }
-        elsif ( $skip_keys{$parts[0]}) { shift @parts; shift @parts; }
-        else                           { push @out, shift @parts; }
-    }
-    return @out;
-}
 
 sub key_field {
     my $key = shift;
@@ -473,12 +443,12 @@ DBIx::Interp - Interpolate Perl variables into SQL with DBI
   use DBI;
   use DBIx::Interp ':all';
 
-  my $dbx = DBIx::Interp->new($dbh);  
+  my $dbx = DBIx::Interp->new($dbh);
 
   my $rv = $dbx->do_i('INSERT INTO table', \%item);
   my $rv = $dbx->do_i('UPDATE table SET',  \%item, 'WHERE item_id <> ', \2);
   my $rv = $dbx->do_i('DELETE FROM table WHERE item_id = ', \2);
-  
+
   my $LoH = $dbx->selectall_arrayref_i('
         SELECT * FROM table WHERE x = ', \$s, 'AND y IN', \@v
         ,attr(Slice=>{}));
@@ -490,7 +460,10 @@ DBIx::Interp brings L<SQL::Interp|SQL::Interp> and L<DBI|DBI> together in a
 natural way.  Please read the documentation of those two modules if you are
 unfamiliar with them.  The DBIx::Interp interface adds methods to the DBI
 interface with an "_i" suffix, indicating that SQL::Interp interpolatation is performed
-in these cases. 
+in these cases.
+
+I< Note that this module is no longer used by the maintainer. DBIx::Simple now features SQL::Interp
+integration and is the recommended alternative. >
 
 =head1 Helper Functions you may need
 
@@ -499,8 +472,8 @@ in these cases.
   dbi_interp("SELECT * from my_table", attr( Slice => {} ) );
 
 Creates and returns an DBIx::Interp::Attr object. When processed
-by L<dbi_interp()>, it will add the provided key/value pairs 
-to the "%attrs" hash that is accepted by many DBI methods. 
+by L<dbi_interp()>, it will add the provided key/value pairs
+to the "%attrs" hash that is accepted by many DBI methods.
 
 =head2 C<key_field>
 
@@ -584,7 +557,7 @@ methods).
 
 =head2 selectrow_hashref_i
 
-These methods are identical to those in DBI except interpolation is performed 
+These methods are identical to those in DBI except interpolation is performed
 via L<SQL::Interp>.
 
 =head2 prepare
@@ -695,7 +668,7 @@ called internally by the DBI wrapper methods:
   #       "SELECT * FROM mytable WHERE x=", \$x,
   #       key_field("y"), attr(myatt => 1));
 
-=end private 
+=end private
 
 These are more advanced examples.
 

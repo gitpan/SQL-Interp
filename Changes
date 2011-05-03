@@ -1,15 +1,41 @@
 
-A future release:
+1.11-TRIAL 2011-05-03
 
-    - If you like SQL::Interp, please consider supporting the project by adding support
-      for the 'quote_char' and 'name_sep' options. SQL::Abstract has code that can be
-      borrowed for this. See this bug report for details:
-      http://rt.cpan.org/Public/Bug/Display.html?id=31488
+    I'm looking for feedback on the new "strict mode" before including it a stable release.
+    Contact: Mark Stosberg <mark@summersault.com> 
 
-    - If you use SQL::Interp with PostgreSQL and are interested in a further
-      performance improvement, considering working on this optimization: 
-        "RT#39778: wish: optimize IN() to be ANY() for compatible PostgreSQL versions": 
-         https://rt.cpan.org/Ticket/Display.html?id=39778
+    [THINGS THAT MIGHT BREAK YOUR CODE]
+    - This is no longer supported for enabling SQL tracing: 
+         SQL::Interp TRACE => 1;
+      You can still set $ENV{TRACE_SQL} = 1  to enable SQL tracing.
+
+    [FEATURES]
+    - Add sql_interp_strict() as a first stab at an API for adding a strict mode. 
+    - Switched to using Sub::Exporter and Exporter. This allows you to do this:
+
+      use SQL::Interp 'sql_interp_strict' => { -as => 'sql_interp' };
+
+      So that strict mode is enabled throughout your code. Before you do that,
+      read the docs on sql_interp_strict-- some of your code may need to be
+      refactored for it work, so you may want to start with the incremental
+      approach.
+
+      While sql_interp() will work as before for backwards compatibility, you
+      can do this to rename them on import now:
+
+      use SQL::Interp
+         'sql_interp'        => { -as => 'sql_interp_insecure' },
+         'sql_interp_strict' => { -as => 'sql_interp' };
+
+      If you would like a shortcut for this in the form of SQL::Interp::Strict,
+      let me know. 
+
+    [DOCUMENTATION]
+    - The documentation has been updated to clarify that DBIx::Simple's
+      SQL::Interp integration is recommended over DBIx::Interp.
+
+    - Noted that SQL::Interp now has the primary repo hosted on Github:
+      https://github.com/markstos/SQL-Interp
 
 1.10 2009-06-28
 

@@ -10,7 +10,7 @@ use DBI qw(:sql_types);
 
 my $dbh = DBI->connect('DBI:Mock:', '', '')
     or die "Cannot create handle: $DBI::errstr\n";
-my $dbx = new DBIx::Interp($dbh);
+my $dbx = DBIx::Interp->new($dbh);
 
 my @data1   = (['a', 'b'], ['c', 'd']);
 my @result1 = (['color', 'size'], @data1);
@@ -21,7 +21,7 @@ my $y = 6;
 # test of use parameter inheritance
 BEGIN {
     use_ok('DBIx::Interp',
-        'dbi_interp', 'sql_interp', TRACE_SQL => 0); # 0.3
+        'dbi_interp', 'sql_interp' ); # 0.3
 }
 
 # selectall_arrayref
