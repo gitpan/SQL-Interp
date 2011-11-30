@@ -48,7 +48,7 @@
       },
       "SQL::Interp" : {
          "file" : "lib/SQL/Interp.pm",
-         "version" : "1.11"
+         "version" : "1.20"
       },
       "SQL::Interp::SQL" : {
          "file" : "lib/SQL/Interp.pm",
@@ -65,5 +65,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.11"
+   "version" : "1.20"
 }
