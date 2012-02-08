@@ -16,7 +16,7 @@ name: SQL-Interp
 provides:
   DBIx::Interp:
     file: lib/DBIx/Interp.pm
-    version: 1.11
+    version: 1.21
   DBIx::Interp::STX:
     file: lib/DBIx/Interp.pm
     version: 0
@@ -25,7 +25,7 @@ provides:
     version: 0
   SQL::Interp:
     file: lib/SQL/Interp.pm
-    version: 1.20
+    version: 1.21
   SQL::Interp::SQL:
     file: lib/SQL/Interp.pm
     version: 0
@@ -42,4 +42,4 @@ requires:
   perl: v5.8.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 1.20
+version: 1.21

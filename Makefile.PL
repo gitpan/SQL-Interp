@@ -3,14 +3,14 @@ require 5.008000;
 use ExtUtils::MakeMaker;
 WriteMakefile
 (
-          'PL_FILES' => {},
-          'INSTALLDIRS' => 'site',
           'NAME' => 'SQL::Interp',
-          'EXE_FILES' => [],
           'VERSION_FROM' => 'lib/SQL/Interp.pm',
           'PREREQ_PM' => {
-                           'Sub::Exporter' => 0,
-                           'DBI' => '1'
-                         }
+                           'DBI' => '1',
+                           'Sub::Exporter' => '0'
+                         },
+          'INSTALLDIRS' => 'site',
+          'EXE_FILES' => [],
+          'PL_FILES' => {}
         )
 ;
