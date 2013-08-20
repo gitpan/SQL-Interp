@@ -5,7 +5,7 @@
       "Mark Stosberg <mark@summersault.com>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.110930",
+   "generated_by" : "Module::Build version 0.4006, CPAN::Meta::Converter version 2.131560",
    "license" : [
       "perl_5"
    ],
@@ -22,13 +22,13 @@
       },
       "runtime" : {
          "recommends" : {
-            "Filter::Simple" : 0,
-            "Scalar::Util" : 0,
+            "Filter::Simple" : "0",
+            "Scalar::Util" : "0",
             "Text::Balanced" : "1.87"
          },
          "requires" : {
             "DBI" : "1",
-            "Sub::Exporter" : 0,
+            "Sub::Exporter" : "0",
             "perl" : "v5.8.0"
          }
       }
@@ -36,27 +36,23 @@
    "provides" : {
       "DBIx::Interp" : {
          "file" : "lib/DBIx/Interp.pm",
-         "version" : "1.21"
+         "version" : "1.22"
       },
       "DBIx::Interp::STX" : {
-         "file" : "lib/DBIx/Interp.pm",
-         "version" : 0
+         "file" : "lib/DBIx/Interp.pm"
       },
       "DBIx::Interp::db" : {
-         "file" : "lib/DBIx/Interp.pm",
-         "version" : 0
+         "file" : "lib/DBIx/Interp.pm"
       },
       "SQL::Interp" : {
          "file" : "lib/SQL/Interp.pm",
-         "version" : "1.21"
+         "version" : "1.22"
       },
       "SQL::Interp::SQL" : {
-         "file" : "lib/SQL/Interp.pm",
-         "version" : 0
+         "file" : "lib/SQL/Interp.pm"
       },
       "SQL::Interp::Variable" : {
-         "file" : "lib/SQL/Interp.pm",
-         "version" : 0
+         "file" : "lib/SQL/Interp.pm"
       }
    },
    "release_status" : "stable",
@@ -65,5 +61,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "1.21"
+   "version" : "1.22"
 }

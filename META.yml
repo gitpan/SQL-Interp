@@ -7,7 +7,7 @@ build_requires: {}
 configure_requires:
   Module::Build: 0.38
 dynamic_config: 1
-generated_by: 'Module::Build version 0.38, CPAN::Meta::Converter version 2.110930'
+generated_by: 'Module::Build version 0.4006, CPAN::Meta::Converter version 2.131560'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -16,22 +16,18 @@ name: SQL-Interp
 provides:
   DBIx::Interp:
     file: lib/DBIx/Interp.pm
-    version: 1.21
+    version: 1.22
   DBIx::Interp::STX:
     file: lib/DBIx/Interp.pm
-    version: 0
   DBIx::Interp::db:
     file: lib/DBIx/Interp.pm
-    version: 0
   SQL::Interp:
     file: lib/SQL/Interp.pm
-    version: 1.21
+    version: 1.22
   SQL::Interp::SQL:
     file: lib/SQL/Interp.pm
-    version: 0
   SQL::Interp::Variable:
     file: lib/SQL/Interp.pm
-    version: 0
 recommends:
   Filter::Simple: 0
   Scalar::Util: 0
@@ -42,4 +38,4 @@ requires:
   perl: v5.8.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 1.21
+version: 1.22
